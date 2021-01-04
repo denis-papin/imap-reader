@@ -1,0 +1,32 @@
+
+emailFolder: /Users/denis/Documents/Mes Emails
+
+accounts:
+
+  -
+    name: Denis Perso
+    group: false
+    recover: true # reload a delete email
+    login: denis@isd.lu
+    password: ........
+    server: mail.gandi.net
+    port: 993
+    imapOutFolder:
+      - Sent
+    imapInFolder:
+      - INBOX
+
+  -
+    name: Les Roses
+    group: true  # group by email
+    recover: false # do not reload a delete email
+    login: tartine300@lesroses-vacances.fr
+    password: .........
+    server: mail.gandi.net
+    port: 993
+    imapOutFolder:
+      - Sent Messages
+      - Éléments envoyés
+    imapInFolder:
+      - INBOX
+
