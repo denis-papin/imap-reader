@@ -162,8 +162,15 @@ public class ReadMail {
         logger.info("🚀 Read imap single folder : [{}]", imapFolder);
 
         IMAPFolder inbox = (IMAPFolder) store.getFolder(imapFolder);
-        inbox.open(Folder.READ_ONLY);
-        Message[] messages = inbox.getMessages();
+        Message[] messages = new Message[] {};
+        try {
+            inbox.open(Folder.READ_ONLY);
+            messages = inbox.getMessages();
+        }  catch (FolderNotFoundException e) {
+            logger.debug("💣 Imap Folder does not exist : {}", imapFolder);
+        } catch (MessagingException e) {
+            logger.debug("💣 Imap Folder open error : {}", imapFolder);
+        }
 
         logger.info("😎 Number of message read : [{}]", messages.length);
 
@@ -173,7 +180,7 @@ public class ReadMail {
             Message msg = messages[i];
             Address[] fromAddress = msg.getFrom();
             String from = fromAddress[0].toString();
-            String subject = msg.getSubject().trim();
+            String subject =  msg.getSubject() == null ? "" :  msg.getSubject().trim();
 
             logger.debug("🐞 Message number : [{}], subject : [{}]", i, subject);
 
