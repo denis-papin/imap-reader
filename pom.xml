@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>lu.isd.imap_reader</groupId>
     <artifactId>imap_reader</artifactId>
-    <version>1.3</version>
+    <version>1.4</version>
     <name>imap_reader</name>
     <description>read emails from an imap account</description>
 
@@ -14,7 +14,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>15</java.version>
+        <java.version>17</java.version>
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven.compiler.source>${java.version}</maven.compiler.source>
     </properties>
@@ -28,11 +28,19 @@
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/javax.mail/mail -->
+<!--        <dependency>-->
+<!--            <groupId>javax.mail</groupId>-->
+<!--            <artifactId>mail</artifactId>-->
+<!--            <version>1.4.7</version>-->
+<!--        </dependency>-->
+
+        <!-- https://mvnrepository.com/artifact/com.sun.mail/javax.mail -->
         <dependency>
-            <groupId>javax.mail</groupId>
-            <artifactId>mail</artifactId>
-            <version>1.4.7</version>
+            <groupId>com.sun.mail</groupId>
+            <artifactId>javax.mail</artifactId>
+            <version>1.6.2</version>
         </dependency>
+
 
         <dependency>
             <groupId>org.slf4j</groupId>
