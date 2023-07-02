@@ -266,7 +266,7 @@ public class ReadMail {
         if (msg instanceof IMAPMessage) {
             id = ((IMAPMessage) msg).getMessageID().trim();
         }
-        logger.info("😎 Save message in pathName=[{}]", pathName);
+        logger.info("🔥 Save message in pathName=[{}]", pathName);
         logger.debug("🐞 Message ID : {}", id);
 
         // Write the message on disk
