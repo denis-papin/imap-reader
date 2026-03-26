@@ -20,6 +20,7 @@ import javax.net.ssl.X509TrustManager;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -203,11 +204,32 @@ public class ReadMail {
         }
 
         try {
-            return MimeUtility.decodeText(personal).trim();
+            return repairMojibake(MimeUtility.decodeText(personal).trim());
         } catch (Exception e) {
             logger.warn("Unable to decode contact display name [{}]", personal);
-            return personal.trim();
+            return repairMojibake(personal.trim());
         }
+    }
+
+    private String repairMojibake(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+
+        // "gÃ©nÃ©rale" is usually UTF-8 bytes that were interpreted as ISO-8859-1/Windows-1252.
+        // We only apply this fallback when the usual mojibake markers are present to avoid
+        // changing display names that are already correct.
+        if (!value.contains("Ã") && !value.contains("Â")) {
+            return value;
+        }
+
+        String repaired = new String(
+                value.getBytes(StandardCharsets.ISO_8859_1),
+                StandardCharsets.UTF_8
+        );
+
+        // Keep the original value if the repair made the text worse or empty.
+        return repaired.isBlank() ? value : repaired;
     }
 
     private String resolveCasualName(ContactInfo contactInfo) {
