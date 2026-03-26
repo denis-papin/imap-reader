@@ -10,7 +10,9 @@ import org.apache.commons.lang3.StringEscapeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.mail.*;
+import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeUtility;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
@@ -18,6 +20,7 @@ import javax.net.ssl.X509TrustManager;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -148,6 +151,8 @@ public class ReadMail {
         PARENTHESIS
     }
 
+    private record ContactInfo(String casual, String email) {}
+
     private String[] extractContactInfo(String contact, EmailSep sep) {
         String sep1 = "";
         String sep2 = "";
@@ -172,6 +177,86 @@ public class ReadMail {
             email = contact.substring(pos+1, pos2).toLowerCase();
         }
         return new String[]{ casual, email } ;
+    }
+
+    private ContactInfo extractContact(Address[] addresses) {
+        if (addresses == null || addresses.length == 0 || addresses[0] == null) {
+            return new ContactInfo("", "");
+        }
+
+        Address address = addresses[0];
+        if (address instanceof InternetAddress internetAddress) {
+            String email = internetAddress.getAddress() == null
+                    ? ""
+                    : internetAddress.getAddress().trim().toLowerCase();
+            String casual = decodePersonal(internetAddress);
+            return new ContactInfo(casual, email);
+        }
+
+        String[] infos = extractContactInfo(address.toString().trim(), EmailSep.BRACKETS);
+        return new ContactInfo(infos[0], infos[1]);
+    }
+
+    private String decodePersonal(InternetAddress internetAddress) {
+        String personal = internetAddress.getPersonal();
+        if (personal == null || personal.isBlank()) {
+            return "";
+        }
+
+        try {
+            return repairMojibake(MimeUtility.decodeText(personal).trim());
+        } catch (Exception e) {
+            logger.warn("Unable to decode contact display name [{}]", personal);
+            return repairMojibake(personal.trim());
+        }
+    }
+
+    private String repairMojibake(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+
+        // "gÃ©nÃ©rale" is usually UTF-8 bytes that were interpreted as ISO-8859-1/Windows-1252.
+        // We only apply this fallback when the usual mojibake markers are present to avoid
+        // changing display names that are already correct.
+        if (!value.contains("Ã") && !value.contains("Â")) {
+            return value;
+        }
+
+        String repaired = new String(
+                value.getBytes(StandardCharsets.ISO_8859_1),
+                StandardCharsets.UTF_8
+        );
+
+        // Keep the original value if the repair made the text worse or empty.
+        return repaired.isBlank() ? value : repaired;
+    }
+
+    private String resolveCasualName(ContactInfo contactInfo) {
+        String email = contactInfo.email();
+        String casual = contactInfo.casual() == null ? "" : contactInfo.casual().trim();
+        String existingCasual = this.contactMap.get(email);
+
+        if (existingCasual != null && !existingCasual.isBlank()) {
+            return existingCasual;
+        }
+
+        if (!email.isBlank() && !casual.isBlank()) {
+            this.contactMap.put(email, casual);
+        }
+        return casual;
+    }
+
+    private String buildTerminalFolder(ContactInfo contactInfo) {
+        String casual = resolveCasualName(contactInfo);
+        String email = contactInfo.email() == null ? "" : contactInfo.email().trim();
+        if (email.isBlank()) {
+            return sanitizeFilename(casual);
+        }
+        if (casual.isBlank()) {
+            return sanitizeFilename(email);
+        }
+        return sanitizeFilename(casual + " (" + email + ")");
     }
 
     private final static int MAX_MESSAGE_TO_READ = 10_000; // change it to 10_000
@@ -212,40 +297,19 @@ public class ReadMail {
             // Loop the messages and check if already existing
             if ( id != null && ((! indexes.contains(id)) || (recover && inRecovery.contains(id)))) {
 
-                var refEmail = switch (direction) {
+                ContactInfo contactInfo = switch (direction) {
                     case IN -> {
-                        String sender = "";
-                        if (msg.getFrom() != null && msg.getFrom().length > 0) {
-                            sender = msg.getFrom()[0].toString().trim();
-                        }
                         subject = "🔴 " + subject;
-                        yield sender;
+                        yield extractContact(msg.getFrom());
                     }
                     case OUT -> {
-                        String rcv = "";
-                        if (msg.getRecipients(Message.RecipientType.TO) != null
-                                && msg.getRecipients(Message.RecipientType.TO).length > 0) {
-                            rcv = msg.getRecipients(Message.RecipientType.TO)[0].toString().trim();
-                        }
                         subject = "🔵 " + subject;
-                        yield rcv;
+                        yield extractContact(msg.getRecipients(Message.RecipientType.TO));
                     }
                 };
 
-                String[] infos = extractContactInfo(refEmail, EmailSep.BRACKETS);
-                String casual = infos[0];
-                String email  = infos[1];
-
-                if ( this.contactMap.containsKey(email)) {
-                    casual = this.contactMap.get(email);
-                } else {
-                    this.contactMap.put(email, casual);
-                }
-
-                var extraFolder = casual + " (" + email + ")";
-
                 String terminalFolder = switch (group.toString()) {
-                    case "true" -> sanitizeFilename(extraFolder);
+                    case "true" -> buildTerminalFolder(contactInfo);
                     case "false" -> imapFolder;
                     default -> "";
                 };

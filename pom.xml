@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>lu.isd.imap_reader</groupId>
     <artifactId>imap_reader</artifactId>
-    <version>1.5</version>
+    <version>1.6</version>
     <name>imap_reader</name>
     <description>read emails from an imap account</description>
 
