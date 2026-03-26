@@ -11,7 +11,8 @@ class ImapReader {
 
     public static void main(String[] argc) {
 
-        Config conf = (new ConfigService()).getConfig();
+        String configPath = argc.length > 0 ? argc[0] : null;
+        Config conf = (new ConfigService(configPath)).getConfig();
 
         // Read the stored messageId as index
         logger.info("🚀 Read stored indexes");
